@@ -1,6 +1,5 @@
 from random import choice
 from math import *
-from multiprocessing import Process
 import time
 import threading
 #import common
@@ -14,11 +13,11 @@ def RewardFunc(me,Gstate):
             reWar = Gstate.get_score('red')    
         return reWar
 
-class SimulationThread(Process):
+class SimulationThread(threading.Thread):
     def __init__(self, state):
         #self.__state = state.clone()
         self.__state = state.copy()
-        Process.__init__(self)
+        threading.Thread.__init__(self)
         
     def get_result(self, playerjm):
         #return self.__state.get_result(playerjm)
@@ -29,14 +28,6 @@ class SimulationThread(Process):
         while moves and not self.__state.is_terminal():  # while state is non-terminal
             self.__state.apply_move(random.choice(moves))
             moves = self.__state.get_moves()
-
-def process_run(state1,val):
-    state = state1.copy()
-    moves = state.get_moves()
-    while moves and not state.is_terminal():  # while state is non-terminal
-            state.apply_move(random.choice(moves))
-            moves = state.get_moves()
-    val.append(state)
 
 class Node:
     def __init__(self, move = None, parent = None, state = None):
@@ -129,8 +120,8 @@ def think(rootstate):
 
     max_depth = 0
     rootnode = Node(state = rootstate)
-    iter_max = 10000
-    Parallel_Count = 2
+    iter_max = 2000
+    Parallel_Count = 10
     
     for i in range(iter_max):
         node = rootnode
@@ -150,10 +141,9 @@ def think(rootstate):
         
         # Rollout - this can often be made orders of magnitude quicker using a state.GetRandomMove() function
         threads = []
-        val = []
         
         for j in range(Parallel_Count):
-            threads.append(Process(target=process_run, args=(state,val)))
+            threads.append(SimulationThread(state))
         
         for t in threads:
             t.start()
@@ -165,16 +155,14 @@ def think(rootstate):
         while node != None:  # backpropagate from the expanded node and work back to the root node
             if node.parentNode:
                 #finalscore = RewardFunc(node.parentNode.player,state)
-                finalscore = sum([RewardFunc(node.parentNode.player,s) for s in val]) / Parallel_Count
+                finalscore = sum([t.get_result(node.parentNode.player) for t in threads]) / Parallel_Count
             else:
                 finalscore = 0
             #result = sum([t.get_result(node.player_just_moved()) for t in threads]) / common.PARALLEL_COUNT
             node.Update(finalscore)  # state is terminal. update node with result from POV of node.player_just_moved
             node = node.parentNode
 
-        for t in threads:
-            print(i)
-            t.terminate()
+        del threads[:]
         del threads
 
     """

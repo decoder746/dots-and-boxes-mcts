@@ -1,6 +1,8 @@
+import random
+
 class Game(object):
 	
-	def __init__(self, width=4):
+	def __init__(self, width=5):
 		self.width = width
 		self.players = ('red','blue') # these must be valid tkinter color names
 		self.dots = frozenset((i,j) for i in range(self.width) for j in range(self.width))
@@ -62,6 +64,8 @@ class State(object):
 		return self
 
 	def is_terminal(self):
+		#print(len(self.box_owners))
+		#print(len(self.game.boxes))
 		return len(self.box_owners) == len(self.game.boxes)
 
 	def get_score(self, player):
@@ -69,8 +73,45 @@ class State(object):
 		for box in self.game.boxes:
 			owner = self.box_owners.get(box)
 			if owner:
-				if owner is player:
+				if owner==player:
 					score += 1
 				else:
 					score -= 1
 		return score
+
+	def count(self, box):
+		(i,j) = box
+		count = 0
+		if (i,j) in self.h_line_owners:
+			count = count + 1
+		if (i,j) in self.v_line_owners:
+			count = count + 1
+		if (i,j+1) in self.h_line_owners:
+			count = count + 1
+		if (i+1,j) in self.v_line_owners:
+			count = count + 1
+		return count
+
+
+	def chains(self,moves):
+		ls = []		
+		for move in moves:
+			orientation, cell = move
+			(i,j) = cell
+			if (i,j) not in self.box_owners:
+				count = self.count(cell)				
+				if count == 3:
+					ls.append(move)
+				if count == 2:
+					if orientation == 'h' and self.count((i-1,j)) >= 2:
+						ls.append(move)
+					elif orientation == 'v' and self.count((i,j+1)) >= 2:
+						ls.append(move)
+
+		if len(ls)>0:
+			return random.choice(ls)
+		else:
+			return random.choice(moves)
+
+
+

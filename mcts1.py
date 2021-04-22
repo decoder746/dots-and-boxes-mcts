@@ -13,12 +13,8 @@ class Node:
         self.untriedMoves = state.get_moves()
         self.player = state.get_whose_turn()
    
-    def UCTSelectChild(self,prune=None):   
-        s = sorted(self.childNodes, key = lambda c: float(c.score)/(c.visits) + sqrt(20*log(self.visits)/c.visits))[-1]
-        """
-        if prune is not None:
-            s = sorted(prune, key = lambda c: float(c.score)/(c.visits) + sqrt(2*log(self.visits)/c.visits))[-1]
-        """
+    def UCTSelectChild(self):   
+        s = sorted(self.childNodes, key = lambda c: float(c.score)/c.visits + sqrt(2*log(self.visits)/c.visits))[-1]
         return s
     
     def AddChild(self, m, s):
@@ -33,7 +29,7 @@ class Node:
 
 
 def think(rootstate):
-    rootnode = Node(state = rootstate) 
+    rootnode = Node(state = rootstate)  
     def RewardFunc(me,Gstate):
         reWar = 0.0
         if me == 'blue':
@@ -42,19 +38,17 @@ def think(rootstate):
             reWar = Gstate.get_score('red')    
         return reWar
     rollouts= 0
-    prune = []
-    num = 20000
-    while rollouts < num:
+    while rollouts < 10000:
         node = rootnode
         state = rootstate.copy()
         rollouts +=  1
         #Selection
-        while len(node.untriedMoves) == 0 and len(node.childNodes) != 0:
+        while len(node.untriedMoves) == 0 and len(node.childNodes) != 0: 
             node = node.UCTSelectChild()
             state.apply_move(node.move)
         #Expansion
         if len(node.untriedMoves) != 0: 
-            m = choice(node.untriedMoves) #Gives the lines not covered yet
+            m = choice(node.untriedMoves) 
             #m = state.chains(node.untriedMoves)
             state.apply_move(m)
             node = node.AddChild(m,state)
@@ -70,17 +64,6 @@ def think(rootstate):
                 finalscore = 0
             node.Update(finalscore)
             node = node.parentNode
-
-    """
-    node = rootnode
-    while len(node.untriedMoves) == 0 and len(node.childNodes) !=0:
-        for c in node.childNodes:
-            print(c.visits)
-    """
-    #for k in rootnode.childNodes:
-        #print(k.visits)
-        #print(k.score/k.visits)
-
+    
     selected = sorted(rootnode.childNodes, key = lambda c: c.visits)[-1]
-    print(selected.score/selected.visits)
     return selected.move 
